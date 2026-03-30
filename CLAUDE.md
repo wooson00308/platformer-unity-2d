@@ -94,6 +94,39 @@ void OnEnable() => _input.Enable();
 void OnDisable() => _input.Disable();
 ```
 
+## Unity MCP 활용
+
+코드 수정 후 반드시 assets-refresh로 컴파일 상태를 확인할 것.
+프로젝트 루트에서 실행해야 한다.
+
+```bash
+# 코드 수정 후 컴파일 에러 확인
+unity-mcp-cli run-tool assets-refresh --input '{}'
+
+# 런타임 에러 확인
+unity-mcp-cli run-tool console-get-logs --input '{}'
+
+# 씬 하이라키 탐색, 컴포넌트 일괄 조회 등 (class + static method 구조 필수)
+unity-mcp-cli run-tool script-execute --input-file - <<'SCRIPT'
+{"csharpCode": "using UnityEngine;\npublic class Script { public static object Main() { return \"hello\"; } }"}
+SCRIPT
+```
+
+검증 흐름: 파일 수정 → assets-refresh → 에러 확인 → (에러 시) console-get-logs
+
+## ScriptableObject 수정 주의사항
+
+assets-modify로 SO를 부분 수정하면 명시하지 않은 필드가 기본값(0)으로 리셋될 수 있다.
+
+SO 에셋 수정이 필요할 때:
+- 안전한 방법: YAML 직접 수정(sed 등) + assets-refresh 조합
+- assets-modify는 전체 필드를 다 지정할 때만 사용
+
+```bash
+# YAML 직접 수정 후 Unity에 반영
+unity-mcp-cli run-tool assets-refresh --input '{}'
+```
+
 ## 커밋 컨벤션
 
 ```

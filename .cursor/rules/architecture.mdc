@@ -65,3 +65,20 @@ using Platformer.UI; // Game/ 파일에서 절대 금지
 ```
 
 올바른 대안: Inspector SerializeField로 직접 연결하거나, SO 이벤트 채널 사용.
+
+## 코드 수정 후 검증 흐름
+
+파일 수정 → assets-refresh → 에러 확인 → (에러 시) console-get-logs
+
+```bash
+# 코드 수정 후 반드시 실행
+unity-mcp-cli run-tool assets-refresh --input '{}'
+
+# 컴파일 에러가 있으면 로그 확인
+unity-mcp-cli run-tool console-get-logs --input '{}'
+```
+
+에러 0 확인될 때까지 다음 작업으로 넘어가지 말 것.
+
+script-execute는 씬 하이라키 탐색, 컴포넌트 일괄 조회 등 일괄 작업에만 사용.
+단일 오브젝트 조작은 개별 MCP 툴(assets-get 등) 사용.
