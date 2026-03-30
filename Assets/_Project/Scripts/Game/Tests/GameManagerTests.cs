@@ -1,3 +1,4 @@
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -11,8 +12,11 @@ namespace Platformer.Game.Tests
         public void SetUp()
         {
             _go = new GameObject("GameManager");
-            // EditMode에서는 Awake가 자동 호출되지 않으므로 수동 트리거
-            _go.AddComponent<GameManager>().SendMessage("Awake");
+            var manager = _go.AddComponent<GameManager>();
+            // EditMode에서 Awake 자동 호출 안 됨 — 리플렉션으로 직접 호출
+            typeof(GameManager)
+                .GetMethod("Awake", BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(manager, null);
         }
 
         [TearDown]
