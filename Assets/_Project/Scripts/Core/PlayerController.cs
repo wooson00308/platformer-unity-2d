@@ -1,10 +1,11 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using Platformer.Data;
 
 namespace Platformer.Core
 {
-    public class PlayerController : MonoBehaviour
+    public class PlayerController : MonoBehaviour, IDamageable
     {
         [SerializeField] private float _moveSpeed = 5f;
         [SerializeField] private float _jumpForce = 10f;
@@ -12,6 +13,8 @@ namespace Platformer.Core
         [SerializeField] private Transform _groundCheck;
         [SerializeField] private float _groundCheckRadius = 0.15f;
         [SerializeField] private LayerMask _groundLayer;
+        [SerializeField] private float _deathReloadDelay = 1f;
+        [SerializeField] private string _deathTriggerName = "Die";
 
         private Rigidbody2D _rb;
         private Animator _animator;
@@ -20,6 +23,7 @@ namespace Platformer.Core
         private float _moveInput;
         private bool _jumpRequested;
         private float _defaultGravityScale;
+        private bool _isDead;
 
         void Awake()
         {
@@ -40,6 +44,9 @@ namespace Platformer.Core
 
         void Update()
         {
+            if (_isDead)
+                return;
+
             var raw = _input.Player.Move.ReadValue<Vector2>();
             _moveInput = raw.x != 0f ? Mathf.Sign(raw.x) : 0f;
 
@@ -52,6 +59,9 @@ namespace Platformer.Core
 
         void FixedUpdate()
         {
+            if (_isDead)
+                return;
+
             _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed, _rb.linearVelocity.y);
 
             if (_jumpRequested)
@@ -105,6 +115,59 @@ namespace Platformer.Core
             var scale = transform.localScale;
             scale.x = _moveInput > 0 ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
             transform.localScale = scale;
+        }
+
+        public void TakeDamage(int amount)
+        {
+            if (_isDead || amount <= 0)
+                return;
+
+            Die();
+        }
+
+        private void Die()
+        {
+            _isDead = true;
+            _moveInput = 0f;
+            _jumpRequested = false;
+            _rb.linearVelocity = Vector2.zero;
+            _rb.gravityScale = 0f;
+            _rb.constraints = RigidbodyConstraints2D.FreezePositionX
+                | RigidbodyConstraints2D.FreezePositionY
+                | RigidbodyConstraints2D.FreezeRotation;
+            SetState(PlayerState.Dead);
+
+            if (_animator != null)
+            {
+                if (HasAnimatorParameter(_deathTriggerName, AnimatorControllerParameterType.Trigger))
+                    _animator.SetTrigger(_deathTriggerName);
+
+                var deathStateHash = Animator.StringToHash("Death");
+                if (_animator.HasState(0, deathStateHash))
+                    _animator.Play(deathStateHash, 0, 0f);
+            }
+
+            Invoke(nameof(ReloadCurrentScene), _deathReloadDelay);
+        }
+
+        private void ReloadCurrentScene()
+        {
+            var activeScene = SceneManager.GetActiveScene();
+            SceneManager.LoadScene(activeScene.buildIndex);
+        }
+
+        private bool HasAnimatorParameter(string parameterName, AnimatorControllerParameterType parameterType)
+        {
+            if (_animator == null || _animator.runtimeAnimatorController == null)
+                return false;
+
+            foreach (var parameter in _animator.parameters)
+            {
+                if (parameter.type == parameterType && parameter.name == parameterName)
+                    return true;
+            }
+
+            return false;
         }
     }
 }
