@@ -5,6 +5,14 @@ alwaysApply: true
 
 # 어셈블리 경계 규칙
 
+## Unity MCP 연결 필수
+
+코드 수정, 씬 조작, 테스트 실행 등 모든 작업 전에 Unity MCP 연결을 확인해야 한다.
+```bash
+unity-mcp-cli run-tool assets-refresh --input '{}'
+```
+실패하면 setup-mcp 스킬을 실행해서 연결부터 잡을 것. 연결 없이 작업하면 검증이 안 된다.
+
 ## 참조 방향 (절대 위반 금지)
 
 ```

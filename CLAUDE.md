@@ -3,6 +3,17 @@
 Unity 6.0.3, URP 2D 기반 2D 플랫포머 에셋 데모 프로젝트.
 아트 디자이너가 AI(Cursor/Claude Code)와 함께 작업하는 것을 전제로 구성된 가드레일 환경.
 
+## 작업 시작 전 필수 확인
+
+Unity MCP 연결이 되어있어야 에디터 제어(컴파일 체크, 씬 조작, 테스트)가 가능하다.
+작업 시작 전 반드시 연결 상태를 확인할 것.
+
+```bash
+unity-mcp-cli run-tool assets-refresh --input '{}'
+```
+
+SUCCESS가 나오면 정상. 에러가 나오면 setup-mcp 스킬을 실행해서 연결을 세팅할 것.
+
 ## 어셈블리 맵
 
 ```
