@@ -14,6 +14,7 @@ namespace Platformer.Core
         [SerializeField] private LayerMask _groundLayer;
 
         private Rigidbody2D _rb;
+        private Animator _animator;
         private InputSystem_Actions _input;
         private PlayerState _state = PlayerState.Idle;
         private float _moveInput;
@@ -23,6 +24,7 @@ namespace Platformer.Core
         void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
+            _animator = GetComponent<Animator>();
             _input = new InputSystem_Actions();
             _defaultGravityScale = _rb.gravityScale;
         }
@@ -38,12 +40,14 @@ namespace Platformer.Core
 
         void Update()
         {
-            _moveInput = _input.Player.Move.ReadValue<Vector2>().x;
+            var raw = _input.Player.Move.ReadValue<Vector2>();
+            _moveInput = raw.x != 0f ? Mathf.Sign(raw.x) : 0f;
 
             if (_input.Player.Jump.WasPressedThisFrame() && IsGrounded())
                 _jumpRequested = true;
 
             UpdateState();
+            UpdateFacing();
         }
 
         void FixedUpdate()
@@ -85,6 +89,22 @@ namespace Platformer.Core
         {
             if (_state == newState) return;
             _state = newState;
+            UpdateAnimator();
+        }
+
+        private void UpdateAnimator()
+        {
+            if (_animator == null) return;
+            _animator.SetFloat("Speed", Mathf.Abs(_moveInput));
+            _animator.SetBool("IsGrounded", IsGrounded());
+        }
+
+        private void UpdateFacing()
+        {
+            if (Mathf.Abs(_moveInput) < 0.01f) return;
+            var scale = transform.localScale;
+            scale.x = _moveInput > 0 ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
+            transform.localScale = scale;
         }
     }
 }

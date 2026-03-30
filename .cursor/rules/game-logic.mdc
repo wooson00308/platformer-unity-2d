@@ -76,6 +76,65 @@ bool IsGrounded()
 groundCheck는 발 위치에 빈 GameObject로 배치.
 Layer는 Inspector에서 Ground 레이어로 설정.
 
+## 2D 플랫포머 물리 필수 패턴
+
+### 플레이어 콜라이더: CapsuleCollider2D
+
+BoxCollider2D는 타일 이음새에서 모서리가 걸린다. 반드시 CapsuleCollider2D(Vertical) 사용.
+```csharp
+// 플레이어에는 BoxCollider2D 대신 CapsuleCollider2D
+var capsule = player.AddComponent<CapsuleCollider2D>();
+capsule.direction = CapsuleDirection2D.Vertical;
+```
+
+### NoFriction PhysicsMaterial2D
+
+플레이어 콜라이더에 마찰 0 머티리얼을 적용하지 않으면 벽면에 달라붙는다.
+```csharp
+// Assets/_Project/Datas/NoFriction.physicsMaterial2D 사용
+// friction = 0, bounciness = 0
+capsule.sharedMaterial = noFrictionMaterial;
+```
+
+### 타일맵 CompositeCollider2D
+
+TilemapCollider2D만 쓰면 타일 사이 이음새에서 플레이어가 걸린다.
+반드시 CompositeCollider2D를 추가하고 Merge 모드로 설정.
+```
+Tilemap_Ground:
+  - Rigidbody2D (Static)
+  - TilemapCollider2D (compositeOperation = Merge)
+  - CompositeCollider2D
+```
+
+### Ground 레이어 체크리스트
+
+지면 감지가 안 되면 점프가 안 된다. 반드시 확인:
+- [ ] ProjectSettings/TagManager.asset에 "Ground" 레이어 등록
+- [ ] 타일맵 오브젝트의 Layer가 Ground로 설정
+- [ ] PlayerController의 _groundLayer SerializeField에 Ground 체크
+
+### 입력과 이동속도
+
+2D 플랫포머에서 WASD Move 입력은 x축만 사용. y축(W/S)이 포함되면 대각선 정규화로 이동속도가 감소한다.
+```csharp
+// 올바른 방법 — x축 방향만 추출
+var raw = _input.Player.Move.ReadValue<Vector2>();
+_moveInput = raw.x != 0f ? Mathf.Sign(raw.x) : 0f;
+
+// 잘못된 방법 — 대각선 정규화로 속도 줄어듦
+_moveInput = _input.Player.Move.ReadValue<Vector2>().x;
+```
+
+### SpriteRenderer 머티리얼 (URP 2D)
+
+URP 2D 프로젝트에서 SpriteRenderer에 Lit 셰이더가 자동 할당되면 보라색으로 깨진다.
+스프라이트 추가/교체 후 반드시 확인:
+```csharp
+// 머티리얼이 보라색이면
+sr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+```
+
 ## 코루틴 캐싱
 
 같은 코루틴을 여러 번 시작하면 중복 실행. 반드시 레퍼런스 저장 후 관리.

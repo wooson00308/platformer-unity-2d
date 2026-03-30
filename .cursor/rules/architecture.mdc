@@ -66,6 +66,23 @@ using Platformer.UI; // Game/ 파일에서 절대 금지
 
 올바른 대안: Inspector SerializeField로 직접 연결하거나, SO 이벤트 채널 사용.
 
+## 플레이 모드 규칙
+
+씬 오브젝트 수정, 씬 저장, 에셋 생성은 반드시 에디트 모드에서 해야 한다.
+플레이 모드에서 MarkSceneDirty, CreateAsset 등을 호출하면 에러가 터진다.
+
+씬 수정 작업 전 항상 확인:
+```csharp
+// script-execute에서
+if (UnityEditor.EditorApplication.isPlaying)
+{
+    UnityEditor.EditorApplication.isPlaying = false;
+    return "플레이 모드 종료 후 다시 실행";
+}
+```
+
+플레이 모드 중 변경한 값은 플레이 종료 시 전부 사라진다. 영구 변경은 반드시 에디트 모드에서.
+
 ## 코드 수정 후 검증 흐름
 
 1. 코드 수정
