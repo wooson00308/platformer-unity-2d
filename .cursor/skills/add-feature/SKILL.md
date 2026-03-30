@@ -83,9 +83,43 @@ namespace Platformer.Game
 - SerializeField 슬롯에 SO, Prefab, 컴포넌트 연결
 - 이벤트 채널 사용 시 SO 인스턴스를 양쪽(발행/구독)에 모두 연결
 
-### 6. 검증
+### 6. 테스트 작성
+
+새 기능에 대응하는 테스트 파일을 Tests/ 폴더에 생성:
+
+```csharp
+// 예: Scripts/Game/Tests/EnemyControllerTests.cs
+using NUnit.Framework;
+using UnityEngine;
+
+namespace Platformer.Game.Tests
+{
+    public class EnemyControllerTests
+    {
+        [Test]
+        public void TakeDamage_ReducesHealth()
+        {
+            var go = new GameObject();
+            // ... 셋업 및 검증
+            Object.DestroyImmediate(go);
+        }
+    }
+}
+```
+
+### 7. 검증
+
+```bash
+# 컴파일 확인
+unity-mcp-cli run-tool assets-refresh --input '{}'
+grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
+
+# 테스트 실행
+unity-mcp-cli run-tool tests-run --input '{}'
+```
 
 - [ ] 컴파일 에러 없음
+- [ ] 테스트 전부 통과
 - [ ] 어셈블리 경계 위반 없음 (using 확인)
 - [ ] 플레이 모드에서 동작 확인
 - [ ] null 참조 에러 없음 (Inspector 슬롯 다 채워졌는지)

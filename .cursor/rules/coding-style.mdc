@@ -75,6 +75,17 @@ unity-mcp-cli run-tool assets-refresh --input '{}'
 grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
 ```
 
+## 테스트 규칙
+
+새 스크립트 작성 시 대응하는 테스트 파일도 생성할 것.
+테스트 파일은 해당 어셈블리의 Tests/ 폴더에:
+- Scripts/Data/새기능.cs → Scripts/Data/Tests/새기능Tests.cs
+- Scripts/Core/새기능.cs → Scripts/Core/Tests/새기능Tests.cs
+- Scripts/Game/새기능.cs → Scripts/Game/Tests/새기능Tests.cs
+- Scripts/UI/새기능.cs → Scripts/UI/Tests/새기능Tests.cs
+
+namespace는 `Platformer.X.Tests`. [Test] 어트리뷰트(NUnit) 사용.
+
 ## Debug.Log 정책
 
 Debug.Log는 개발 중에만. 빌드 전 반드시 제거하거나 조건부로 감쌀 것.

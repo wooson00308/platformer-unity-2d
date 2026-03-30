@@ -123,6 +123,22 @@ SCRIPT
 2. `unity-mcp-cli run-tool assets-refresh --input '{}'` — 에디터에 반영
 3. `grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30` — 컴파일 에러 확인
 4. 에러 있으면 수정 후 1번부터 반복
+5. `unity-mcp-cli run-tool tests-run --input '{}'` — 테스트 통과 확인
+
+## 테스트
+
+테스트 실행:
+```bash
+unity-mcp-cli run-tool tests-run --input '{}'
+```
+
+테스트 파일 위치: 각 어셈블리의 Tests/ 폴더
+- Scripts/Data/Tests/
+- Scripts/Core/Tests/
+- Scripts/Game/Tests/
+- Scripts/UI/Tests/
+
+새 기능 추가 시 대응하는 테스트도 함께 작성할 것. 테스트 없이 머지하지 말 것.
 
 ## ScriptableObject 수정 주의사항
 
