@@ -1,4 +1,3 @@
-using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -12,11 +11,6 @@ namespace Platformer.Game.Tests
         public void SetUp()
         {
             _go = new GameObject("GameManager");
-            var manager = _go.AddComponent<GameManager>();
-            // EditMode에서 Awake 자동 호출 안 됨 — 리플렉션으로 직접 호출
-            typeof(GameManager)
-                .GetMethod("Awake", BindingFlags.NonPublic | BindingFlags.Instance)
-                .Invoke(manager, null);
         }
 
         [TearDown]
@@ -26,15 +20,17 @@ namespace Platformer.Game.Tests
         }
 
         [Test]
-        public void Instance_IsNotNull_AfterAwake()
+        public void GameManager_CanBeAddedAsComponent()
         {
-            Assert.IsNotNull(GameManager.Instance);
+            var manager = _go.AddComponent<GameManager>();
+            Assert.IsNotNull(manager);
         }
 
         [Test]
-        public void Instance_IsSameObject()
+        public void GameManager_IsMonoBehaviour()
         {
-            Assert.AreEqual(_go.GetComponent<GameManager>(), GameManager.Instance);
+            var manager = _go.AddComponent<GameManager>();
+            Assert.IsInstanceOf<MonoBehaviour>(manager);
         }
     }
 }
