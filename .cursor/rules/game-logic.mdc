@@ -135,6 +135,103 @@ URP 2D 프로젝트에서 SpriteRenderer에 Lit 셰이더가 자동 할당되면
 sr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
 ```
 
+## 스프라이트 좌우 반전
+
+transform.localScale.x를 음수로 바꿔서 반전하면 자식 오브젝트(GroundCheck 등)까지 뒤집혀서 문워크 현상이 생긴다.
+반드시 SpriteRenderer.flipX를 사용할 것.
+
+```csharp
+// 올바른 방법
+_spriteRenderer.flipX = (_moveDirection < 0f);
+
+// 잘못된 방법 — 자식 오브젝트 위치가 뒤집히면서 문워크 발생
+var scale = transform.localScale;
+scale.x = Mathf.Sign(_moveDirection) * Mathf.Abs(scale.x);
+transform.localScale = scale;
+```
+
+적 캐릭터의 경우 스프라이트 기본 방향에 따라 flipX 로직이 달라진다:
+```csharp
+// 스프라이트가 기본으로 오른쪽을 보면
+_spriteRenderer.flipX = (directionX < 0f);
+// 스프라이트가 기본으로 왼쪽을 보면
+_spriteRenderer.flipX = (directionX > 0f);
+```
+
+## 적 추적 AI: 데드존 필수
+
+추적형 적이 타겟 위치에 거의 도달했을 때 좌우 진동(와리가리)이 발생한다.
+반드시 stopDistance 데드존을 넣어야 한다.
+
+```csharp
+[SerializeField] private float _stopDistanceX = 0.2f;
+
+void FixedUpdate()
+{
+    var toTarget = _target.position - transform.position;
+    if (Mathf.Abs(toTarget.x) <= _stopDistanceX)
+    {
+        _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
+        return; // 정지
+    }
+    // 추적 이동...
+}
+```
+
+## 스톰프(밟기) 판정
+
+위에서 밟기 판정은 bounds 비교보다 충돌 노멀(contact.normal)이 안정적이다.
+CapsuleCollider2D 경사면에서 bounds가 부정확해지기 때문.
+
+```csharp
+// 1순위: 충돌 노멀 체크
+foreach (var contact in collision.contacts)
+{
+    if (contact.normal.y >= 0.5f) // 적 기준 위에서 맞음
+        return true;
+}
+
+// 2순위: 노멀이 불안정한 프레임 대비 bounds 보조 체크
+var playerBottom = otherCollider.bounds.min.y;
+var enemyTop = _collider.bounds.max.y;
+return playerBottom >= enemyTop - _stompContactTolerance;
+```
+
+추가로 적 머리 위에 전용 트리거 콜라이더(StompZone)를 보조 배치하면 더 안정적.
+
+## 사망 처리 패턴
+
+Rigidbody2D.simulated = false는 Animator 업데이트까지 차단해서 사망 애니메이션이 안 나온다.
+대신 constraints + gravityScale로 동결:
+
+```csharp
+void Die()
+{
+    _isDead = true;
+    _rb.linearVelocity = Vector2.zero;
+    _rb.gravityScale = 0f;
+    _rb.constraints = RigidbodyConstraints2D.FreezeAll;
+
+    // 애니메이션 재생 후 씬 리로드
+    if (_animator != null)
+        _animator.SetTrigger("Die");
+    Invoke(nameof(ReloadScene), _deathReloadDelay);
+}
+```
+
+## 새 기능 스펙 확정 절차
+
+비개발자가 "적 만들어줘" 같은 열린 요청을 하면, 구현 전에 반드시 아래 항목을 확정:
+
+1. 타입 (근접/원거리/고정)
+2. 감지 방식 (거리/시야/항상)
+3. 공격 방식 (접촉/투사체)
+4. 체력 (즉사/다단)
+5. 사망 처리 (파괴/애니메이션)
+6. 리스폰 (씬 리로드/타이머)
+
+확정 없이 구현하면 재작업 발생한다.
+
 ## 코루틴 캐싱
 
 같은 코루틴을 여러 번 시작하면 중복 실행. 반드시 레퍼런스 저장 후 관리.
