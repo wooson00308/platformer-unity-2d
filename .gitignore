@@ -81,4 +81,6 @@ Thumbs.db
 
 # Unity MCP auto-generated local files
 .mcp.json
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/build/
