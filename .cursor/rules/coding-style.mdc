@@ -1,0 +1,81 @@
+---
+description: C# 네이밍, Unity 라이프사이클 순서, SerializeField, Input System, 로그 정책. 항상 적용.
+alwaysApply: true
+---
+
+# 코딩 스타일
+
+## 네이밍
+
+| 대상 | 규칙 | 예시 |
+|---|---|---|
+| 클래스, 메서드, 프로퍼티 | PascalCase | PlayerController, MoveSpeed |
+| 파라미터, 로컬 변수 | camelCase | jumpForce, isGrounded |
+| private 필드 | _camelCase | _rigidbody, _isJumping |
+| SerializeField | _camelCase | _moveSpeed, _jumpHeight |
+| 상수 | UPPER_SNAKE | MAX_JUMP_COUNT |
+| 인터페이스 | I + PascalCase | IDamageable, IInteractable |
+
+## Unity 라이프사이클 순서
+
+아래 순서로 메서드를 배치. 쓰지 않는 메서드는 생략.
+
+```csharp
+void Awake()       // 컴포넌트 초기화, 레퍼런스 캐싱
+void OnEnable()    // 이벤트 구독
+void Start()       // 초기 상태 설정
+void Update()      // 프레임 단위 입력/로직
+void FixedUpdate() // 물리 처리
+void OnDisable()   // 이벤트 구독 해제
+void OnDestroy()   // 리소스 정리
+```
+
+## SerializeField
+
+public 필드 쓰지 말 것. 에디터 노출이 필요하면 [SerializeField] + private.
+
+```csharp
+// 금지
+public float moveSpeed = 5f;
+
+// 올바른 방법
+[SerializeField] private float _moveSpeed = 5f;
+
+// SO 참조도 동일
+[SerializeField] private PlayerSettings _settings;
+```
+
+## Input System
+
+레거시 Input 클래스 사용 금지.
+
+```csharp
+// 금지
+if (Input.GetKeyDown(KeyCode.Space)) { }
+float h = Input.GetAxis("Horizontal");
+
+// 올바른 방법 (Input Actions 에셋 생성 후)
+private PlayerInputActions _input;
+void Awake()    => _input = new PlayerInputActions();
+void OnEnable() => _input.Enable();
+void OnDisable()=> _input.Disable();
+
+// 값 읽기
+float h = _input.Player.Move.ReadValue<Vector2>().x;
+bool jumped = _input.Player.Jump.WasPressedThisFrame();
+```
+
+## Debug.Log 정책
+
+Debug.Log는 개발 중에만. 빌드 전 반드시 제거하거나 조건부로 감쌀 것.
+
+```csharp
+// 개발 중 임시 로그
+#if UNITY_EDITOR
+Debug.Log($"[PlayerController] Jump triggered, velocity: {_rb.velocity}");
+#endif
+
+// 에러/경고는 항상 OK
+Debug.LogWarning("Settings asset is null");
+Debug.LogError("Critical: Rigidbody missing");
+```

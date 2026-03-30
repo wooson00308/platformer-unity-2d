@@ -1,0 +1,45 @@
+---
+description: Unity 용어 설명, 자주 나는 에러 번역, SO 조작법. 비개발자 대상 설명 요청 시 적용.
+alwaysApply: false
+---
+
+# Unity 기초 (비개발자용)
+
+## 자주 나오는 Unity 용어
+
+| 용어 | 쉬운 설명 |
+|---|---|
+| Scene | 게임의 한 화면/레벨. 여기에 오브젝트를 배치한다 |
+| GameObject | 씬에 존재하는 모든 것. 플레이어, 적, 카메라 다 포함 |
+| Component | GameObject에 붙이는 기능 모듈. Rigidbody(물리), Collider(충돌) 등 |
+| Prefab | 재사용 가능한 GameObject 템플릿. 복붙하면 연결된 것들이 다 같이 바뀜 |
+| ScriptableObject (SO) | 씬에 없지만 데이터를 저장하는 에셋. 설정값이나 이벤트 채널로 씀 |
+| Inspector | 선택한 오브젝트의 속성을 보고 수정하는 패널 |
+| SerializeField | 코드의 변수를 Inspector에서 보이게 하는 속성 |
+| Animator | 애니메이션 상태를 관리하는 컴포넌트. 어떤 조건에 어떤 애니메이션을 재생할지 설정 |
+| Tilemap | 타일 기반 배경을 그리는 시스템 |
+| URP | Universal Render Pipeline. 이 프로젝트에서 사용하는 렌더링 방식 |
+
+## 자주 나는 에러 → 의미
+
+| 에러 메시지 | 의미 | 해결 |
+|---|---|---|
+| NullReferenceException | 연결해야 할 것이 연결 안 됨 | Inspector에서 슬롯이 비어있는지 확인 |
+| MissingReferenceException | 연결된 오브젝트가 삭제됨 | 참조 오브젝트가 씬에 있는지 확인 |
+| Assembly ... does not exist | .asmdef 이름이 틀림 | .asmdef 파일의 name 필드 확인 |
+| CS0246: type not found | using 문이 빠졌거나 어셈블리 참조 없음 | 맞는 namespace using 추가 |
+| The type ... exists in both | 같은 클래스 이름이 두 개 있음 | 파일/클래스 이름 중복 확인 |
+
+## ScriptableObject 설정 조작법
+
+1. Project 패널에서 해당 .asset 파일 클릭
+2. Inspector에서 값 직접 수정
+3. 수정 후 Ctrl+S (저장)
+4. 플레이 모드 중 수정하면 종료 시 원래대로 돌아옴 — 주의!
+
+## 스프라이트 교체 빠른 순서
+
+1. 새 이미지 파일을 Assets/_Project/Arts/Sprites/ 에 복사
+2. Unity가 자동 임포트 — Project 패널에서 확인
+3. 임포트된 스프라이트 선택 → Inspector에서 Texture Type: Sprite (2D and UI) 확인
+4. Sprite Renderer 또는 Animator에서 기존 스프라이트를 새 것으로 교체

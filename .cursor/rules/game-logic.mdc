@@ -1,0 +1,99 @@
+---
+description: 게임 로직 작성 규칙. 상태머신, 물리, 지면 감지, 코루틴.
+alwaysApply: false
+globs:
+  - "Assets/_Project/Scripts/Game/**/*.cs"
+  - "Assets/_Project/Scripts/Core/**/*.cs"
+---
+
+# 게임 로직 규칙
+
+## PlayerState enum 필수
+
+플레이어 상태는 반드시 PlayerState enum으로 관리. 조건문 분기 난무 금지.
+
+```csharp
+// Platformer.Data.PlayerState 사용
+private PlayerState _state = PlayerState.Idle;
+
+void SetState(PlayerState newState)
+{
+    if (_state == newState) return;
+    _state = newState;
+}
+
+void Update()
+{
+    switch (_state)
+    {
+        case PlayerState.Idle:    HandleIdle(); break;
+        case PlayerState.Running: HandleRunning(); break;
+        case PlayerState.Jumping: HandleJumping(); break;
+    }
+}
+```
+
+## 물리는 FixedUpdate
+
+Rigidbody2D 조작은 반드시 FixedUpdate에서.
+Update에서 velocity 직접 건드리지 말 것.
+
+```csharp
+void FixedUpdate()
+{
+    // 이동
+    _rb.velocity = new Vector2(_moveInput * _settings.moveSpeed, _rb.velocity.y);
+
+    // 점프 (FixedUpdate에서 처리)
+    if (_jumpRequested)
+    {
+        _rb.velocity = new Vector2(_rb.velocity.x, _settings.jumpForce);
+        _jumpRequested = false;
+    }
+}
+
+void Update()
+{
+    // 입력만 받고 플래그로 저장
+    if (_input.Player.Jump.WasPressedThisFrame())
+        _jumpRequested = true;
+}
+```
+
+## 지면 감지 (OverlapCircle)
+
+Raycast보다 OverlapCircle이 경사면/코너에서 안정적.
+
+```csharp
+[SerializeField] private Transform _groundCheck;
+[SerializeField] private float _groundCheckRadius = 0.1f;
+[SerializeField] private LayerMask _groundLayer;
+
+bool IsGrounded()
+    => Physics2D.OverlapCircle(_groundCheck.position, _groundCheckRadius, _groundLayer);
+```
+
+groundCheck는 발 위치에 빈 GameObject로 배치.
+Layer는 Inspector에서 Ground 레이어로 설정.
+
+## 코루틴 캐싱
+
+같은 코루틴을 여러 번 시작하면 중복 실행. 반드시 레퍼런스 저장 후 관리.
+
+```csharp
+private Coroutine _knockbackCoroutine;
+
+void TakeKnockback(Vector2 force)
+{
+    if (_knockbackCoroutine != null)
+        StopCoroutine(_knockbackCoroutine);
+    _knockbackCoroutine = StartCoroutine(KnockbackRoutine(force));
+}
+
+IEnumerator KnockbackRoutine(Vector2 force)
+{
+    _rb.AddForce(force, ForceMode2D.Impulse);
+    yield return new WaitForSeconds(0.2f);
+    _knockbackCoroutine = null;
+}
+```

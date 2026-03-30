@@ -1,0 +1,74 @@
+---
+description: UI 코드 규칙. Game 참조 금지, SO 이벤트 구독, TMP, Canvas 계층.
+alwaysApply: false
+globs:
+  - "Assets/_Project/Scripts/UI/**/*.cs"
+---
+
+# UI 규칙
+
+## Game 네임스페이스 참조 절대 금지
+
+```csharp
+// 이 파일이 Scripts/UI/ 에 있다면:
+using Platformer.Game; // 금지 — 컴파일 에러 발생
+```
+
+UI가 게임 상태를 알아야 할 때는 SO 이벤트 구독으로 받는다.
+
+## SO 이벤트 구독 패턴
+
+```csharp
+namespace Platformer.UI
+{
+    public class HUDController : MonoBehaviour
+    {
+        [SerializeField] private GameEvent _onPlayerDied;
+        [SerializeField] private GameEvent _onHealthChanged;
+
+        void OnEnable()
+        {
+            _onPlayerDied.AddListener(HandlePlayerDied);
+            _onHealthChanged.AddListener(HandleHealthChanged);
+        }
+
+        void OnDisable()
+        {
+            _onPlayerDied.RemoveListener(HandlePlayerDied);
+            _onHealthChanged.RemoveListener(HandleHealthChanged);
+        }
+
+        void HandlePlayerDied() { /* 게임오버 UI 표시 */ }
+        void HandleHealthChanged() { /* 체력바 갱신 */ }
+    }
+}
+```
+
+OnEnable/OnDisable 쌍으로 반드시 구독/해제. 안 하면 씬 전환 시 에러.
+
+## TextMeshPro (TMP)
+
+텍스트는 반드시 TMP 사용. 레거시 Text 컴포넌트 추가 금지.
+
+```csharp
+// 금지
+using UnityEngine.UI;
+Text _label;
+
+// 올바른 방법
+using TMPro;
+[SerializeField] private TMP_Text _label;
+[SerializeField] private TMP_Text _scoreText;
+```
+
+## Canvas 계층 규칙
+
+```
+Canvas (Screen Space - Overlay)
+├── HUD/           ← 체력바, 점수 등 항상 표시
+├── Menus/         ← 일시정지, 설정 등 토글
+└── Popups/        ← 다이얼로그, 알림 등 최상위
+```
+
+Canvas 컴포넌트 하나에 다 때려넣지 말 것.
+HUD/Menus/Popups는 별도 GameObject로 분리하고 SetActive로 토글.

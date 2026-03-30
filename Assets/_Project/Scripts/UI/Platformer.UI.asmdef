@@ -1,0 +1,17 @@
+{
+    "name": "Platformer.UI",
+    "rootNamespace": "Platformer.UI",
+    "references": [
+        "Platformer.Data",
+        "Platformer.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

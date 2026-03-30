@@ -1,0 +1,17 @@
+{
+    "name": "Platformer.Game",
+    "rootNamespace": "Platformer.Game",
+    "references": [
+        "Platformer.Data",
+        "Platformer.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
