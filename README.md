@@ -11,7 +11,7 @@
 - Unity 6.0.3 (URP 2D)
 - Input System
 - 2D Animation / Tilemap
-- Unity MCP (에디터 원격 제어)
+- [Unity MCP](https://github.com/IvanMurzak/Unity-MCP) (에디터 원격 제어)
 
 ## 가드레일 구조
 
