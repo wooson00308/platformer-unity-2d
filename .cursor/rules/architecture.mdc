@@ -68,14 +68,20 @@ using Platformer.UI; // Game/ 파일에서 절대 금지
 
 ## 코드 수정 후 검증 흐름
 
-파일 수정 → assets-refresh → 에러 확인 → (에러 시) console-get-logs
+1. 코드 수정
+2. `unity-mcp-cli run-tool assets-refresh --input '{}'` — 에디터에 반영
+3. `grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30` — 컴파일 에러 확인
+4. 에러 있으면 수정 후 1번부터 반복
 
 ```bash
-# 코드 수정 후 반드시 실행
+# 에디터 반영
 unity-mcp-cli run-tool assets-refresh --input '{}'
 
-# 컴파일 에러가 있으면 로그 확인
-unity-mcp-cli run-tool console-get-logs --input '{}'
+# 컴파일 에러 확인
+grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
+
+# 런타임 에러 확인
+grep -n "NullReferenceException\|InvalidOperationException\|MissingReferenceException" ~/Library/Logs/Unity/Editor.log | tail -20
 ```
 
 에러 0 확인될 때까지 다음 작업으로 넘어가지 말 것.

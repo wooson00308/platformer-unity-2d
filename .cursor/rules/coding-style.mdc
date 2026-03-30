@@ -67,11 +67,12 @@ bool jumped = _input.Player.Jump.WasPressedThisFrame();
 
 ## 컴파일 확인
 
-코드 작성/수정 후 반드시 assets-refresh로 컴파일 상태를 확인할 것.
+코드 작성/수정 후 반드시 assets-refresh 후 로그로 컴파일 상태를 확인할 것.
 에러 0이 확인될 때까지 다음 작업으로 넘어가지 말 것.
 
 ```bash
 unity-mcp-cli run-tool assets-refresh --input '{}'
+grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
 ```
 
 ## Debug.Log 정책

@@ -100,11 +100,17 @@ void OnDisable() => _input.Disable();
 프로젝트 루트에서 실행해야 한다.
 
 ```bash
-# 코드 수정 후 컴파일 에러 확인
+# 코드 수정 후 에디터에 반영
 unity-mcp-cli run-tool assets-refresh --input '{}'
 
+# 컴파일 에러 확인
+grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
+
 # 런타임 에러 확인
-unity-mcp-cli run-tool console-get-logs --input '{}'
+grep -n "NullReferenceException\|InvalidOperationException\|MissingReferenceException" ~/Library/Logs/Unity/Editor.log | tail -20
+
+# 경고 확인
+grep -n "warning CS" ~/Library/Logs/Unity/Editor.log | tail -20
 
 # 씬 하이라키 탐색, 컴포넌트 일괄 조회 등 (class + static method 구조 필수)
 unity-mcp-cli run-tool script-execute --input-file - <<'SCRIPT'
@@ -112,7 +118,11 @@ unity-mcp-cli run-tool script-execute --input-file - <<'SCRIPT'
 SCRIPT
 ```
 
-검증 흐름: 파일 수정 → assets-refresh → 에러 확인 → (에러 시) console-get-logs
+검증 흐름:
+1. 코드 수정
+2. `unity-mcp-cli run-tool assets-refresh --input '{}'` — 에디터에 반영
+3. `grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30` — 컴파일 에러 확인
+4. 에러 있으면 수정 후 1번부터 반복
 
 ## ScriptableObject 수정 주의사항
 
