@@ -78,3 +78,7 @@ Thumbs.db
 
 # Cursor rules and skills are project-specific — keep them
 # .cursor/rules/ and .cursor/skills/ are NOT ignored
+
+# Unity MCP auto-generated local files
+.mcp.json
+.claude/
