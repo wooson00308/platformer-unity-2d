@@ -2,7 +2,8 @@
     "name": "Platformer.Core",
     "rootNamespace": "Platformer.Core",
     "references": [
-        "Platformer.Data"
+        "Platformer.Data",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
