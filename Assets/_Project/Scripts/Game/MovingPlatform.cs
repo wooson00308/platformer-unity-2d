@@ -16,7 +16,7 @@ namespace Platformer.Game
         private Rigidbody2D _rb;
         private Vector2 _origin;
         private Vector2 _targetWorld;
-        private bool _towardEnd = true;
+        private bool _isTowardEnd = true;
         private float _pauseRemaining;
         private Vector2 _computedVelocity;
 
@@ -26,7 +26,7 @@ namespace Platformer.Game
             _rb.bodyType = RigidbodyType2D.Kinematic;
             _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
             _origin = _rb.position;
-            RebuildEndpoints();
+            _RebuildEndpoints();
         }
 
         void FixedUpdate()
@@ -47,13 +47,13 @@ namespace Platformer.Game
                 return;
             }
 
-            var dest = _towardEnd ? _targetWorld : _origin;
+            var dest = _isTowardEnd ? _targetWorld : _origin;
             var next = Vector2.MoveTowards(prev, dest, _settings.moveSpeed * dt);
 
             if ((next - dest).sqrMagnitude < 0.0001f)
             {
                 next = dest;
-                _towardEnd = !_towardEnd;
+                _isTowardEnd = !_isTowardEnd;
                 _pauseRemaining = Mathf.Max(0f, _settings.pauseAtEndpoints);
             }
 
@@ -61,7 +61,7 @@ namespace Platformer.Game
             _computedVelocity = dt > 0f ? (next - prev) / dt : Vector2.zero;
         }
 
-        private void RebuildEndpoints()
+        private void _RebuildEndpoints()
         {
             if (_settings == null)
             {

@@ -8,14 +8,14 @@ namespace Platformer.Game
     {
         [SerializeField] private RespawnData _respawnData;
 
-        private bool _triggered;
+        private bool _isTriggered;
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (_triggered) return;
+            if (_isTriggered) return;
             if (!other.CompareTag("Player")) return;
 
-            _triggered = true;
+            _isTriggered = true;
 
             if (_respawnData != null)
                 _respawnData.Reset();

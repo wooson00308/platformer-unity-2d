@@ -7,11 +7,13 @@ namespace Platformer.Core
 {
     public class PlayerController : MonoBehaviour, IDamageable
     {
+        #region 변수
         [SerializeField] private RespawnData _respawnData;
         [SerializeField] private float _moveSpeed = 5f;
         [SerializeField] private float _jumpForce = 10f;
         [SerializeField] private int _maxAirJumps = 1;
         [SerializeField] private float _fallGravityMultiplier = 2.5f;
+        [SerializeField] private float _fallDeathThreshold = -10f;
         [SerializeField] private Transform _groundCheck;
         [SerializeField] private float _groundCheckRadius = 0.15f;
         [SerializeField] private LayerMask _groundLayer;
@@ -24,13 +26,15 @@ namespace Platformer.Core
         private InputSystem_Actions _input;
         private PlayerState _state = PlayerState.Idle;
         private float _moveInput;
-        private bool _jumpRequested;
-        private bool _pendingJumpConsumesAir;
+        private bool _isJumpRequested;
+        private bool _isAirJumpPending;
         private int _airJumpsRemaining;
         private float _defaultGravityScale;
         private bool _isDead;
         private Collider2D[] _groundOverlapResults;
+        #endregion
 
+        #region 유니티 라이프사이클
         void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
@@ -56,34 +60,34 @@ namespace Platformer.Core
             if (_isDead)
                 return;
 
-            if (transform.position.y < -10f)
+            if (transform.position.y < _fallDeathThreshold)
             {
-                Die();
+                _Die();
                 return;
             }
 
             var raw = _input.Player.Move.ReadValue<Vector2>();
             _moveInput = raw.x != 0f ? Mathf.Sign(raw.x) : 0f;
 
-            if (IsGrounded())
+            if (_IsGrounded())
                 _airJumpsRemaining = _maxAirJumps;
 
             if (_input.Player.Jump.WasPressedThisFrame())
             {
-                if (IsGrounded())
+                if (_IsGrounded())
                 {
-                    _jumpRequested = true;
-                    _pendingJumpConsumesAir = false;
+                    _isJumpRequested = true;
+                    _isAirJumpPending = false;
                 }
                 else if (_airJumpsRemaining > 0)
                 {
-                    _jumpRequested = true;
-                    _pendingJumpConsumesAir = true;
+                    _isJumpRequested = true;
+                    _isAirJumpPending = true;
                 }
             }
 
-            UpdateState();
-            UpdateFacing();
+            _UpdateState();
+            _UpdateFacing();
         }
 
         void FixedUpdate()
@@ -91,23 +95,23 @@ namespace Platformer.Core
             if (_isDead)
                 return;
 
-            var grounded = IsGrounded();
+            var isGrounded = _IsGrounded();
             var platformVel = Vector2.zero;
-            if (grounded && TryGetMovingGroundVelocity(out var pv))
+            if (isGrounded && _TryGetMovingGroundVelocity(out var pv))
                 platformVel = pv;
 
-            if (_jumpRequested)
+            if (_isJumpRequested)
             {
                 _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed + platformVel.x, 0f);
                 _rb.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
-                _jumpRequested = false;
-                if (_pendingJumpConsumesAir)
+                _isJumpRequested = false;
+                if (_isAirJumpPending)
                 {
                     _airJumpsRemaining--;
-                    _pendingJumpConsumesAir = false;
+                    _isAirJumpPending = false;
                 }
             }
-            else if (grounded && platformVel.sqrMagnitude > 0f)
+            else if (isGrounded && platformVel.sqrMagnitude > 0f)
             {
                 _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed + platformVel.x, platformVel.y);
             }
@@ -116,7 +120,6 @@ namespace Platformer.Core
                 _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed, _rb.linearVelocity.y);
             }
 
-            // 떨어질 때 중력 강화 — 더 묵직한 점프감
             _rb.gravityScale = _rb.linearVelocity.y < 0f
                 ? _defaultGravityScale * _fallGravityMultiplier
                 : _defaultGravityScale;
@@ -126,15 +129,27 @@ namespace Platformer.Core
         {
             _input.Player.Disable();
         }
+        #endregion
 
-        private bool IsGrounded()
+        #region Public 메서드
+        public void TakeDamage(int amount)
+        {
+            if (_isDead || amount <= 0)
+                return;
+
+            _Die();
+        }
+        #endregion
+
+        #region Private 메서드
+        private bool _IsGrounded()
         {
             if (_groundCheck == null)
                 return false;
             return Physics2D.OverlapCircle(_groundCheck.position, _groundCheckRadius, _groundLayer);
         }
 
-        private bool TryGetMovingGroundVelocity(out Vector2 velocity)
+        private bool _TryGetMovingGroundVelocity(out Vector2 velocity)
         {
             velocity = Vector2.zero;
             if (_groundCheck == null || _groundOverlapResults == null)
@@ -168,31 +183,31 @@ namespace Platformer.Core
             return false;
         }
 
-        private void UpdateState()
+        private void _UpdateState()
         {
-            if (!IsGrounded())
+            if (!_IsGrounded())
             {
-                SetState(_rb.linearVelocity.y > 0f ? PlayerState.Jumping : PlayerState.Falling);
+                _SetState(_rb.linearVelocity.y > 0f ? PlayerState.Jumping : PlayerState.Falling);
                 return;
             }
-            SetState(Mathf.Abs(_moveInput) > 0.01f ? PlayerState.Running : PlayerState.Idle);
+            _SetState(Mathf.Abs(_moveInput) > 0.01f ? PlayerState.Running : PlayerState.Idle);
         }
 
-        private void SetState(PlayerState newState)
+        private void _SetState(PlayerState newState)
         {
             if (_state == newState) return;
             _state = newState;
-            UpdateAnimator();
+            _UpdateAnimator();
         }
 
-        private void UpdateAnimator()
+        private void _UpdateAnimator()
         {
             if (_animator == null) return;
             _animator.SetFloat("Speed", Mathf.Abs(_moveInput));
-            _animator.SetBool("IsGrounded", IsGrounded());
+            _animator.SetBool("IsGrounded", _IsGrounded());
         }
 
-        private void UpdateFacing()
+        private void _UpdateFacing()
         {
             if (Mathf.Abs(_moveInput) < 0.01f) return;
             var scale = transform.localScale;
@@ -200,35 +215,25 @@ namespace Platformer.Core
             transform.localScale = scale;
         }
 
-        public void TakeDamage(int amount)
-        {
-            if (_isDead || amount <= 0)
-                return;
-
-            Die();
-        }
-
-        private void Die()
+        private void _Die()
         {
             _isDead = true;
             _moveInput = 0f;
-            _jumpRequested = false;
-            _pendingJumpConsumesAir = false;
+            _isJumpRequested = false;
+            _isAirJumpPending = false;
             _rb.linearVelocity = Vector2.zero;
             _rb.gravityScale = 0f;
             _rb.constraints = RigidbodyConstraints2D.FreezePositionX
                 | RigidbodyConstraints2D.FreezePositionY
                 | RigidbodyConstraints2D.FreezeRotation;
-            SetState(PlayerState.Dead);
+            _SetState(PlayerState.Dead);
 
             if (_animator != null)
             {
-                // AnyState→Jump 트랜지션(IsGrounded=false 조건)이 Death보다 먼저 등록돼 있어서
-                // 공중 사망 시 Jump 상태로 가로챌 수 있음 — IsGrounded를 true로 막고 Death 강제 재생
                 _animator.SetBool("IsGrounded", true);
                 _animator.SetFloat("Speed", 0f);
 
-                if (HasAnimatorParameter(_deathTriggerName, AnimatorControllerParameterType.Trigger))
+                if (_HasAnimatorParameter(_deathTriggerName, AnimatorControllerParameterType.Trigger))
                     _animator.SetTrigger(_deathTriggerName);
 
                 var deathStateHash = Animator.StringToHash("Death");
@@ -236,16 +241,16 @@ namespace Platformer.Core
                     _animator.Play(deathStateHash, 0, 0f);
             }
 
-            Invoke(nameof(ReloadCurrentScene), _deathReloadDelay);
+            Invoke(nameof(_ReloadCurrentScene), _deathReloadDelay);
         }
 
-        private void ReloadCurrentScene()
+        private void _ReloadCurrentScene()
         {
             var activeScene = SceneManager.GetActiveScene();
             SceneManager.LoadScene(activeScene.buildIndex);
         }
 
-        private bool HasAnimatorParameter(string parameterName, AnimatorControllerParameterType parameterType)
+        private bool _HasAnimatorParameter(string parameterName, AnimatorControllerParameterType parameterType)
         {
             if (_animator == null || _animator.runtimeAnimatorController == null)
                 return false;
@@ -258,5 +263,6 @@ namespace Platformer.Core
 
             return false;
         }
+        #endregion
     }
 }

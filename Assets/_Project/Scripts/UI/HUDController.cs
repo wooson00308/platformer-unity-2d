@@ -10,7 +10,7 @@ namespace Platformer.UI
         void OnEnable()
         {
             if (_onPlayerDied != null)
-                _onPlayerDied.AddListener(HandlePlayerDied);
+                _onPlayerDied.AddListener(_HandlePlayerDied);
         }
 
         void Start()
@@ -20,10 +20,10 @@ namespace Platformer.UI
         void OnDisable()
         {
             if (_onPlayerDied != null)
-                _onPlayerDied.RemoveListener(HandlePlayerDied);
+                _onPlayerDied.RemoveListener(_HandlePlayerDied);
         }
 
-        private void HandlePlayerDied()
+        private void _HandlePlayerDied()
         {
         }
     }
