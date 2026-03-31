@@ -15,6 +15,7 @@ namespace Platformer.Core
         [SerializeField] private Transform _groundCheck;
         [SerializeField] private float _groundCheckRadius = 0.15f;
         [SerializeField] private LayerMask _groundLayer;
+        [SerializeField] private int _groundOverlapCapacity = 8;
         [SerializeField] private float _deathReloadDelay = 1f;
         [SerializeField] private string _deathTriggerName = "Die";
 
@@ -28,6 +29,7 @@ namespace Platformer.Core
         private int _airJumpsRemaining;
         private float _defaultGravityScale;
         private bool _isDead;
+        private Collider2D[] _groundOverlapResults;
 
         void Awake()
         {
@@ -35,6 +37,7 @@ namespace Platformer.Core
             _animator = GetComponent<Animator>();
             _input = new InputSystem_Actions();
             _defaultGravityScale = _rb.gravityScale;
+            _groundOverlapResults = new Collider2D[Mathf.Max(1, _groundOverlapCapacity)];
         }
 
         void OnEnable()
@@ -88,11 +91,14 @@ namespace Platformer.Core
             if (_isDead)
                 return;
 
-            _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed, _rb.linearVelocity.y);
+            var grounded = IsGrounded();
+            var platformVel = Vector2.zero;
+            if (grounded && TryGetMovingGroundVelocity(out var pv))
+                platformVel = pv;
 
             if (_jumpRequested)
             {
-                _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0f);
+                _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed + platformVel.x, 0f);
                 _rb.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
                 _jumpRequested = false;
                 if (_pendingJumpConsumesAir)
@@ -100,6 +106,14 @@ namespace Platformer.Core
                     _airJumpsRemaining--;
                     _pendingJumpConsumesAir = false;
                 }
+            }
+            else if (grounded && platformVel.sqrMagnitude > 0f)
+            {
+                _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed + platformVel.x, platformVel.y);
+            }
+            else
+            {
+                _rb.linearVelocity = new Vector2(_moveInput * _moveSpeed, _rb.linearVelocity.y);
             }
 
             // 떨어질 때 중력 강화 — 더 묵직한 점프감
@@ -114,7 +128,45 @@ namespace Platformer.Core
         }
 
         private bool IsGrounded()
-            => Physics2D.OverlapCircle(_groundCheck.position, _groundCheckRadius, _groundLayer);
+        {
+            if (_groundCheck == null)
+                return false;
+            return Physics2D.OverlapCircle(_groundCheck.position, _groundCheckRadius, _groundLayer);
+        }
+
+        private bool TryGetMovingGroundVelocity(out Vector2 velocity)
+        {
+            velocity = Vector2.zero;
+            if (_groundCheck == null || _groundOverlapResults == null)
+                return false;
+
+            var n = Physics2D.OverlapCircleNonAlloc(
+                _groundCheck.position,
+                _groundCheckRadius,
+                _groundOverlapResults,
+                _groundLayer);
+
+            for (var i = 0; i < n; i++)
+            {
+                var col = _groundOverlapResults[i];
+                if (col == null)
+                    continue;
+
+                var rb = col.attachedRigidbody;
+                if (rb == null)
+                    rb = col.GetComponentInParent<Rigidbody2D>();
+                if (rb == null)
+                    continue;
+
+                if (rb.TryGetComponent<IMovingGround>(out var moving))
+                {
+                    velocity = moving.GetPointVelocity(_groundCheck.position);
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         private void UpdateState()
         {
