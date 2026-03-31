@@ -5,10 +5,6 @@ namespace Platformer.Game
 {
     public class EnemyMeleeChaser : MonoBehaviour, IDamageable
     {
-        #region 상수
-        private const string IS_CHASING_ANIM_PARAM = "IsChasing";
-        #endregion
-
         #region 변수
         [SerializeField] private Transform _target;
         [SerializeField] private float _moveSpeed = 2f;
@@ -123,8 +119,8 @@ namespace Platformer.Game
                     _spriteRenderer.flipX = _isFacingRightByDefault ? directionX < 0f : directionX > 0f;
             }
 
-            if (_animator != null && _HasAnimatorParameter(IS_CHASING_ANIM_PARAM, AnimatorControllerParameterType.Bool))
-                _animator.SetBool(IS_CHASING_ANIM_PARAM, isChasing && Mathf.Abs(directionX) > 0.01f);
+            if (_animator != null && _HasAnimatorParameter(AnimatorParams.IS_CHASING, AnimatorControllerParameterType.Bool))
+                _animator.SetBool(AnimatorParams.IS_CHASING, isChasing && Mathf.Abs(directionX) > 0.01f);
         }
 
         private bool _HasAnimatorParameter(string parameterName, AnimatorControllerParameterType type)

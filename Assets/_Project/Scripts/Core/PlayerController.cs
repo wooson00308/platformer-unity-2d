@@ -19,7 +19,7 @@ namespace Platformer.Core
         [SerializeField] private LayerMask _groundLayer;
         [SerializeField] private int _groundOverlapCapacity = 8;
         [SerializeField] private float _deathReloadDelay = 1f;
-        [SerializeField] private string _deathTriggerName = "Die";
+        [SerializeField] private string _deathTriggerName = AnimatorParams.DIE_TRIGGER;
 
         private Rigidbody2D _rb;
         private Animator _animator;
@@ -203,8 +203,8 @@ namespace Platformer.Core
         private void _UpdateAnimator()
         {
             if (_animator == null) return;
-            _animator.SetFloat("Speed", Mathf.Abs(_moveInput));
-            _animator.SetBool("IsGrounded", _IsGrounded());
+            _animator.SetFloat(AnimatorParams.SPEED, Mathf.Abs(_moveInput));
+            _animator.SetBool(AnimatorParams.IS_GROUNDED, _IsGrounded());
         }
 
         private void _UpdateFacing()
@@ -230,13 +230,13 @@ namespace Platformer.Core
 
             if (_animator != null)
             {
-                _animator.SetBool("IsGrounded", true);
-                _animator.SetFloat("Speed", 0f);
+                _animator.SetBool(AnimatorParams.IS_GROUNDED, true);
+                _animator.SetFloat(AnimatorParams.SPEED, 0f);
 
                 if (_HasAnimatorParameter(_deathTriggerName, AnimatorControllerParameterType.Trigger))
                     _animator.SetTrigger(_deathTriggerName);
 
-                var deathStateHash = Animator.StringToHash("Death");
+                var deathStateHash = Animator.StringToHash(AnimatorParams.DEATH_STATE);
                 if (_animator.HasState(0, deathStateHash))
                     _animator.Play(deathStateHash, 0, 0f);
             }
