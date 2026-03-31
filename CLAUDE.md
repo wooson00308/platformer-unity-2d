@@ -73,6 +73,43 @@ void OnDisable() => onPlayerDied.RemoveListener(OnPlayerDied);
 - Scripts/Game/ → namespace Platformer.Game
 - Scripts/UI/ → namespace Platformer.UI
 
+### private 메서드 네이밍
+private 메서드는 `_PascalCase`로 작성.
+```csharp
+public void TakeDamage(int amount) { }   // public
+private void _HandleDeath() { }          // private
+```
+
+### Boolean 네이밍
+Boolean 변수에는 is/has 접두사.
+```csharp
+bool isGrounded;
+bool hasCheckpoint;
+```
+
+### 코드 배치 순서 (region)
+클래스 내부 배치: 상수 → 변수 → 프로퍼티 → 라이프사이클 → Public 메서드 → Private 메서드 → 엔진 콜백.
+30줄 이상인 클래스에서 `#region`으로 구분.
+
+### 클래스 접미사 규약
+Controller(오브젝트 제어), Manager(전역 싱글톤), Settings(SO 설정), Data(SO 런타임), Event(SO 이벤트), Zone(트리거 영역).
+
+### UI 오브젝트 프리픽스
+씬/프리팹에서 UI 오브젝트 이름에 접두사: Txt_(텍스트), BTN_(버튼), Img_(이미지), Pan_(패널), Go_(일반), Tg_(토글).
+
+### 프로젝트 디렉토리 구조
+```
+Assets/_Project/
+├── Arts/        — 스프라이트, 애니메이션, 타일셋, VFX, 오디오
+├── Datas/       — SO 인스턴스 (.asset)
+│   └── Events/  — GameEvent SO 인스턴스
+├── Prefabs/     — 프리팹
+├── Resources/   — Resources.Load용 (최소한으로)
+├── Scenes/      — 씬 파일
+└── Scripts/     — 코드 (어셈블리별 분리)
+```
+코드는 Scripts/, 에셋은 Arts/, SO는 Datas/, 외부 에셋팩은 Assets/ 바로 아래.
+
 ### Unity 직렬화 파일 직접 수정 금지
 
 .unity(씬), .prefab, .asset, .controller, .anim 파일을 텍스트로 열어서 직접 읽거나 수정하지 말 것.

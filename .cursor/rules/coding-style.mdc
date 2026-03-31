@@ -1,5 +1,5 @@
 ---
-description: C# 네이밍, Unity 라이프사이클 순서, SerializeField, Input System, 로그 정책. 항상 적용.
+description: C# 네이밍, 코드 배치, region, UI 프리픽스, 프로젝트 디렉토리 규칙. 항상 적용.
 alwaysApply: true
 ---
 
@@ -32,26 +32,77 @@ SO 인스턴스는 Assets/_Project/Datas/ 에 저장.
 
 | 대상 | 규칙 | 예시 |
 |---|---|---|
-| 클래스, 메서드, 프로퍼티 | PascalCase | PlayerController, MoveSpeed |
+| 클래스, 프로퍼티 | PascalCase | PlayerController, MoveSpeed |
+| public/protected 메서드 | PascalCase | TakeDamage(), GetHealth() |
+| private 메서드 | _PascalCase | _HandleDeath(), _RebuildEndpoints() |
 | 파라미터, 로컬 변수 | camelCase | jumpForce, isGrounded |
 | private 필드 | _camelCase | _rigidbody, _isJumping |
 | SerializeField | _camelCase | _moveSpeed, _jumpHeight |
 | 상수 | UPPER_SNAKE | MAX_JUMP_COUNT |
 | 인터페이스 | I + PascalCase | IDamageable, IInteractable |
+| Boolean | is/has 접두사 | isGrounded, hasCheckpoint |
+| 컬렉션 | 복수형 또는 접미사 | enemies, priceList, itemDic |
 
-## Unity 라이프사이클 순서
+## 클래스 접미사 규약
 
-아래 순서로 메서드를 배치. 쓰지 않는 메서드는 생략.
+| 접미사 | 용도 | 예시 |
+|---|---|---|
+| Controller | 오브젝트 단위 동작 제어 | PlayerController, EnemyController |
+| Manager | 전역 싱글톤 | GameManager, AudioManager |
+| Settings | SO 설정 데이터 | PlayerSettings, MovingPlatformSettings |
+| Data | SO 런타임 데이터 | RespawnData |
+| Event | SO 이벤트 채널 | GameEvent |
+| Zone | 트리거 영역 | EnemyStompZone, DamageZone |
+
+## 코드 배치 순서
+
+클래스 내부는 이 순서로 배치:
 
 ```csharp
-void Awake()       // 컴포넌트 초기화, 레퍼런스 캐싱
-void OnEnable()    // 이벤트 구독
-void Start()       // 초기 상태 설정
-void Update()      // 프레임 단위 입력/로직
-void FixedUpdate() // 물리 처리
-void OnDisable()   // 이벤트 구독 해제
-void OnDestroy()   // 리소스 정리
+public class ExampleController : MonoBehaviour
+{
+    #region 상수
+    private const float MAX_SPEED = 10f;
+    #endregion
+
+    #region 변수
+    [SerializeField] private ExampleSettings _settings;
+    [SerializeField] private Rigidbody2D _rb;
+
+    private float _currentSpeed;
+    private bool _isActive;
+    #endregion
+
+    #region 프로퍼티
+    public float CurrentSpeed => _currentSpeed;
+    #endregion
+
+    #region 유니티 라이프사이클
+    void Awake() { }
+    void OnEnable() { }
+    void Start() { }
+    void Update() { }
+    void FixedUpdate() { }
+    void OnDisable() { }
+    void OnDestroy() { }
+    #endregion
+
+    #region Public 메서드
+    public void Activate() { }
+    #endregion
+
+    #region Private 메서드
+    private void _HandleMovement() { }
+    #endregion
+
+    #region 엔진 콜백
+    void OnCollisionEnter2D(Collision2D col) { }
+    void OnTriggerEnter2D(Collider2D col) { }
+    #endregion
+}
 ```
+
+region은 코드가 30줄 이상인 클래스에서 사용. 짧은 클래스에는 불필요.
 
 ## SerializeField
 
@@ -87,6 +138,67 @@ void OnDisable()=> _input.Disable();
 float h = _input.Player.Move.ReadValue<Vector2>().x;
 bool jumped = _input.Player.Jump.WasPressedThisFrame();
 ```
+
+## UI 오브젝트 프리픽스
+
+씬/프리팹에서 UI 오브젝트 이름에 접두사를 붙인다:
+
+| 프리픽스 | 대상 | 예시 |
+|---|---|---|
+| Txt_ | TMP_Text | Txt_Score, Txt_Health |
+| BTN_ | Button | BTN_Start, BTN_Retry |
+| Img_ | Image | Img_HealthBar, Img_Background |
+| Pan_ | Panel | Pan_GameOver, Pan_Pause |
+| Go_ | 일반 GameObject | Go_SpawnPoint |
+| Tg_ | Toggle | Tg_Sound, Tg_Music |
+| Input_ | InputField | Input_PlayerName |
+| SV_ | ScrollView | SV_LevelSelect |
+
+비슷한 용도의 오브젝트가 많으면 빈 부모 오브젝트로 그룹화:
+```
+Canvas
+├── GROUP_HUD/
+│   ├── Txt_Score
+│   ├── Img_HealthBar
+│   └── Txt_Lives
+├── GROUP_Menus/
+│   ├── Pan_Pause
+│   └── Pan_Settings
+└── GROUP_Popups/
+    └── Pan_GameOver
+```
+
+## 프로젝트 디렉토리 구조
+
+```
+Assets/_Project/
+├── Arts/              — 스프라이트, 애니메이션, 타일셋, VFX, 오디오
+│   ├── Animations/
+│   ├── Audio/
+│   ├── Sprites/
+│   ├── Tilesets/
+│   └── VFX/
+├── Datas/             — SO 인스턴스 (.asset)
+│   └── Events/        — GameEvent SO 인스턴스
+├── Prefabs/           — 프리팹
+├── Resources/         — Resources.Load용 (최소한으로)
+├── Scenes/            — 씬 파일
+└── Scripts/           — 코드 (어셈블리별 분리)
+    ├── Core/          — 순수 게임 규칙, 인터페이스
+    │   └── Tests/
+    ├── Data/          — 데이터 구조, SO 클래스, 이벤트
+    │   └── Tests/
+    ├── Game/          — 플레이어/적/월드 동작
+    │   └── Tests/
+    └── UI/            — 화면에 보이는 UI
+        └── Tests/
+```
+
+새 폴더를 만들 때 이 구조를 따른다:
+- 코드는 반드시 Scripts/ 하위 어셈블리 폴더에
+- 에셋(이미지, 사운드 등)은 Arts/ 하위에
+- SO 인스턴스는 Datas/ 에
+- 외부 에셋팩은 Assets/ 바로 아래에 (Assets/_Project 밖)
 
 ## 컴파일 확인
 
