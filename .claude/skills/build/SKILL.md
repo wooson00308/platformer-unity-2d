@@ -1,6 +1,6 @@
 ---
 name: build
-description: 플랫폼별 빌드를 실행한다. 컴파일 체크부터 빌드 실행, 결과 검증까지 AI가 처리한다.
+description: "빌드해줘", "배포해줘", "실행파일 만들어줘" 요청 시 사용. WebGL, Windows, macOS 빌드를 컴파일 체크부터 결과 검증까지 실행한다.
 ---
 
 # 빌드
