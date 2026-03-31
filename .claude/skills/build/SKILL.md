@@ -1,62 +1,181 @@
-# Skill: 빌드
+---
+name: build
+description: 플랫폼별 빌드를 실행한다. 컴파일 체크부터 빌드 실행, 결과 검증까지 AI가 처리한다.
+---
 
-플랫폼별 빌드 절차.
+# 빌드
 
-## 단계
+빌드 요청을 받으면 이 절차를 순서대로 실행한다.
 
-### 1. 컴파일 체크
+## 전제 조건
 
-빌드 전 에러가 없는지 먼저 확인:
-- Unity 하단 Console 창 열기 (Ctrl+Shift+C)
-- 빨간 에러 0개 확인
-- 경고(노란색)는 빌드에 영향 없지만 확인 권장
+- Unity 프로젝트가 열려있고 에디트 모드여야 함
+- 빌드 대상 플랫폼: WebGL (기본) 또는 Standalone (사용자 지정 시)
 
-에러 있으면 빌드 진행하지 말 것. 빌드 중 에러가 나면 결과물이 깨짐.
+## Step 0 — MCP 가용 여부 확인
 
-### 2. 버전 확인
+```bash
+unity-mcp-cli run-tool assets-refresh --input '{}'
+```
 
-`ProjectSettings/ProjectVersion.txt` 또는 Player Settings에서:
-- Product Name 확인
-- Version 번호 확인 및 필요시 업데이트
-  - `ProjectSettings > Player > Version`
-  - 형식: `major.minor.patch` (예: `0.1.0`)
+SUCCESS → MCP 모드, 실패 → 수동 모드.
 
-### 3. 플랫폼 설정
+---
 
-File > Build Settings (Ctrl+Shift+B):
+## Step 1 — 컴파일 확인
 
-**WebGL (데모 배포용):**
-- Platform: WebGL 선택 → Switch Platform
-- Compression Format: Disabled (빠른 테스트) 또는 Gzip
-- Scenes In Build: 빌드할 씬이 목록에 있는지 확인
+빌드 전 에러가 없어야 한다. 에러가 있으면 빌드가 깨진다.
 
-**Standalone (Windows/Mac):**
-- Platform: PC, Mac & Linux Standalone
-- Target Platform: 대상 OS 선택
-- Architecture: x86_64
+```bash
+unity-mcp-cli run-tool assets-refresh --input '{}'
+grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
+```
 
-### 4. 빌드 실행
+에러가 있으면 수정 후 반복. 에러 0이 될 때까지 다음으로 넘어가지 않는다.
 
-Build Settings 창에서:
-1. 빌드 출력 폴더 지정 (프로젝트 루트 바깥 권장, 예: `../Builds/`)
-2. `Build` 버튼 클릭
-3. 빌드 완료까지 대기 (WebGL은 5-15분 소요)
+수동 모드에서 CLI도 없으면:
+> Unity 하단 Console 창(Ctrl+Shift+C)에서 빨간 에러가 0개인지 확인해줘.
 
-### 5. 검증
+---
 
-**WebGL:**
-- 빌드 폴더에서 로컬 서버 실행 필요 (파일 직접 열기 불가)
-- 터미널: `cd 빌드폴더 && python3 -m http.server 8080`
-- 브라우저에서 `http://localhost:8080` 접속
+## Step 2 — 버전 확인
 
-**Standalone:**
-- 생성된 .exe / .app 직접 실행
+현재 버전을 읽고 사용자에게 확인한다:
+
+```bash
+grep "bundleVersion" ProjectSettings/ProjectSettings.asset
+```
+
+버전 업데이트가 필요하면 YAML 직접 수정:
+
+```bash
+sed -i '' 's/bundleVersion: .*/bundleVersion: 0.2.0/' ProjectSettings/ProjectSettings.asset
+```
+
+수정 후 assets-refresh로 에디터에 반영.
+
+---
+
+## Step 3 — 빌드 실행
+
+### MCP 모드
+
+#### WebGL (기본)
+
+```csharp
+using UnityEngine;
+using UnityEditor;
+
+public class Script
+{
+    public static object Main()
+    {
+        var scenes = new[] { "Assets/_Project/Scenes/Main.unity" };
+        var path = "../Builds/WebGL";
+
+        var report = BuildPipeline.BuildPlayer(scenes, path, BuildTarget.WebGL, BuildOptions.None);
+
+        if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            return $"빌드 성공: {path} ({report.summary.totalSize} bytes)";
+        else
+            return $"빌드 실패: {report.summary.result}\n{report.summary.totalErrors} errors";
+    }
+}
+```
+
+#### Standalone (Windows)
+
+```csharp
+using UnityEngine;
+using UnityEditor;
+
+public class Script
+{
+    public static object Main()
+    {
+        var scenes = new[] { "Assets/_Project/Scenes/Main.unity" };
+        var path = "../Builds/Windows/Game.exe";
+
+        var report = BuildPipeline.BuildPlayer(scenes, path, BuildTarget.StandaloneWindows64, BuildOptions.None);
+
+        if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            return $"빌드 성공: {path}";
+        else
+            return $"빌드 실패: {report.summary.result}";
+    }
+}
+```
+
+#### Standalone (macOS)
+
+```csharp
+using UnityEngine;
+using UnityEditor;
+
+public class Script
+{
+    public static object Main()
+    {
+        var scenes = new[] { "Assets/_Project/Scenes/Main.unity" };
+        var path = "../Builds/macOS/Game.app";
+
+        var report = BuildPipeline.BuildPlayer(scenes, path, BuildTarget.StandaloneOSX, BuildOptions.None);
+
+        if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            return $"빌드 성공: {path}";
+        else
+            return $"빌드 실패: {report.summary.result}";
+    }
+}
+```
+
+빌드는 수 분 걸릴 수 있다. 타임아웃에 주의.
+
+### 수동 모드
+
+사용자에게 안내:
+> 1. File → Build Settings (Ctrl+Shift+B) 열기.
+> 2. Platform 목록에서 WebGL (또는 원하는 플랫폼) 선택 → Switch Platform (처음이면).
+> 3. Scenes In Build 목록에 Assets/_Project/Scenes/Main.unity가 있는지 확인. 없으면 Add Open Scenes.
+> 4. Build 버튼 클릭 → 출력 폴더를 프로젝트 바깥 (예: ../Builds/WebGL) 으로 지정.
+> 5. 빌드 완료까지 대기 (WebGL은 5-15분).
+
+---
+
+## Step 4 — 검증
+
+### MCP 모드
+
+빌드 결과 확인:
+```bash
+ls -la ../Builds/WebGL/ 2>/dev/null || ls -la ../Builds/Windows/ 2>/dev/null || ls -la ../Builds/macOS/ 2>/dev/null
+```
+
+빌드 로그에서 에러 확인:
+```bash
+grep -n "Error\|Exception" ~/Library/Logs/Unity/Editor.log | tail -20
+```
+
+### 수동 모드
+
+#### WebGL 검증
+> 터미널에서 빌드 폴더로 이동 후 로컬 서버 실행:
+> ```
+> cd ../Builds/WebGL && python3 -m http.server 8080
+> ```
+> 브라우저에서 http://localhost:8080 접속해서 게임 시작되는지 확인.
+
+#### Standalone 검증
+> 생성된 .exe 또는 .app 파일을 직접 실행해서 확인.
+
+체크리스트:
+- [ ] 빌드 결과 파일이 존재함
 - [ ] 시작 씬 로드 정상
 - [ ] 입력 동작 확인
-- [ ] 오디오 재생 확인
+- [ ] 콘솔에 런타임 에러 없음
 
 ## 주의사항
 
-- Library/ 폴더는 .gitignore에 포함 — 빌드 아티팩트도 커밋하지 말 것
-- WebGL 빌드는 `Builds/` 폴더에만 저장, 프로젝트 Assets/ 안에 넣지 말 것
-- 빌드 후 씬 변경사항 저장 여부 팝업 뜨면 반드시 Save
+- Builds/ 폴더는 프로젝트 밖에 생성한다. Assets/ 안에 넣으면 Unity가 임포트 시도함.
+- Library/ 폴더와 빌드 아티팩트는 커밋하지 않는다.
+- WebGL 빌드는 파일을 직접 열 수 없다. 반드시 로컬 서버를 거쳐야 한다.

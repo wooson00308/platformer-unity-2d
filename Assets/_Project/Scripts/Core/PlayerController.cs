@@ -7,8 +7,10 @@ namespace Platformer.Core
 {
     public class PlayerController : MonoBehaviour, IDamageable
     {
+        [SerializeField] private RespawnData _respawnData;
         [SerializeField] private float _moveSpeed = 5f;
         [SerializeField] private float _jumpForce = 10f;
+        [SerializeField] private int _maxAirJumps = 1;
         [SerializeField] private float _fallGravityMultiplier = 2.5f;
         [SerializeField] private Transform _groundCheck;
         [SerializeField] private float _groundCheckRadius = 0.15f;
@@ -22,6 +24,8 @@ namespace Platformer.Core
         private PlayerState _state = PlayerState.Idle;
         private float _moveInput;
         private bool _jumpRequested;
+        private bool _pendingJumpConsumesAir;
+        private int _airJumpsRemaining;
         private float _defaultGravityScale;
         private bool _isDead;
 
@@ -40,6 +44,8 @@ namespace Platformer.Core
 
         void Start()
         {
+            if (_respawnData != null && _respawnData.hasCheckpoint)
+                transform.position = _respawnData.position;
         }
 
         void Update()
@@ -47,11 +53,31 @@ namespace Platformer.Core
             if (_isDead)
                 return;
 
+            if (transform.position.y < -10f)
+            {
+                Die();
+                return;
+            }
+
             var raw = _input.Player.Move.ReadValue<Vector2>();
             _moveInput = raw.x != 0f ? Mathf.Sign(raw.x) : 0f;
 
-            if (_input.Player.Jump.WasPressedThisFrame() && IsGrounded())
-                _jumpRequested = true;
+            if (IsGrounded())
+                _airJumpsRemaining = _maxAirJumps;
+
+            if (_input.Player.Jump.WasPressedThisFrame())
+            {
+                if (IsGrounded())
+                {
+                    _jumpRequested = true;
+                    _pendingJumpConsumesAir = false;
+                }
+                else if (_airJumpsRemaining > 0)
+                {
+                    _jumpRequested = true;
+                    _pendingJumpConsumesAir = true;
+                }
+            }
 
             UpdateState();
             UpdateFacing();
@@ -69,6 +95,11 @@ namespace Platformer.Core
                 _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0f);
                 _rb.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
                 _jumpRequested = false;
+                if (_pendingJumpConsumesAir)
+                {
+                    _airJumpsRemaining--;
+                    _pendingJumpConsumesAir = false;
+                }
             }
 
             // 떨어질 때 중력 강화 — 더 묵직한 점프감
@@ -130,6 +161,7 @@ namespace Platformer.Core
             _isDead = true;
             _moveInput = 0f;
             _jumpRequested = false;
+            _pendingJumpConsumesAir = false;
             _rb.linearVelocity = Vector2.zero;
             _rb.gravityScale = 0f;
             _rb.constraints = RigidbodyConstraints2D.FreezePositionX
@@ -139,6 +171,11 @@ namespace Platformer.Core
 
             if (_animator != null)
             {
+                // AnyState→Jump 트랜지션(IsGrounded=false 조건)이 Death보다 먼저 등록돼 있어서
+                // 공중 사망 시 Jump 상태로 가로챌 수 있음 — IsGrounded를 true로 막고 Death 강제 재생
+                _animator.SetBool("IsGrounded", true);
+                _animator.SetFloat("Speed", 0f);
+
                 if (HasAnimatorParameter(_deathTriggerName, AnimatorControllerParameterType.Trigger))
                     _animator.SetTrigger(_deathTriggerName);
 

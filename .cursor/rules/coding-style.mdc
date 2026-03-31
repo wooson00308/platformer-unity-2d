@@ -5,6 +5,29 @@ alwaysApply: true
 
 # 코딩 스타일
 
+## 1파일 1클래스
+
+파일 하나에 클래스 하나. private inner class는 예외.
+
+## Arts/ 폴더 스크립트 금지
+
+Arts/ 하위에는 스프라이트, 애니메이션, 타일셋, VFX, 오디오 에셋만. .cs 파일 절대 넣지 말 것.
+
+## SO Settings 패턴 (하드코딩 금지)
+
+숫자 값(속도, 점프력, 체력 등)은 반드시 ScriptableObject로 분리.
+
+```csharp
+// 금지
+float speed = 5f;
+
+// 올바른 방법
+[SerializeField] private PlayerSettings _settings;
+float speed = _settings.moveSpeed;
+```
+
+SO 인스턴스는 Assets/_Project/Datas/ 에 저장.
+
 ## 네이밍
 
 | 대상 | 규칙 | 예시 |

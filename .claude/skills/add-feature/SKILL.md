@@ -1,125 +1,374 @@
-# Skill: 새 기능 추가
+---
+name: add-feature
+description: 새 게임 기능을 어셈블리 구조에 맞게 추가하는 절차. 코드 작성부터 프리팹/씬 배치까지 AI가 전부 실행한다.
+---
 
-새 게임 기능을 어셈블리 구조에 맞게 추가하는 절차.
+# 새 기능 추가
 
-## 단계
+기능 요청을 받으면 이 절차를 Step 1부터 순서대로 실행한다. 건너뛰지 않는다.
 
-### 1. 분류
+## 전제 조건
 
-기능이 어느 어셈블리에 속하는지 먼저 판단:
+- Unity 프로젝트가 열려있고 에디트 모드여야 함
+- 어셈블리 맵을 숙지할 것 (CLAUDE.md 참고)
+
+## Step 0 — MCP 가용 여부 확인
+
+```bash
+unity-mcp-cli run-tool assets-refresh --input '{}'
+```
+
+- SUCCESS → 이후 모든 Step에서 "MCP 모드" 절차를 따른다.
+- 실패/타임아웃 → 이후 모든 Step에서 "수동 모드" 절차를 따른다.
+
+이 판정은 한 번만 하고, 이후 Step에서 반복하지 않는다.
+
+---
+
+## Step 1 — 어셈블리 판단
+
+기능이 어디에 속하는지 판단한다:
 
 | 질문 | 어셈블리 |
 |---|---|
-| 데이터/설정/이벤트 정의? | Platformer.Data |
+| 데이터 구조, 설정값, 이벤트 정의? | Platformer.Data |
 | 순수 게임 규칙, 인터페이스? | Platformer.Core |
-| 플레이어/적/월드 동작? | Platformer.Game |
-| 화면에 보이는 UI? | Platformer.UI |
+| 플레이어/적/월드 동작, 물리? | Platformer.Game |
+| 화면에 보이는 UI 요소? | Platformer.UI |
 
-Game ↔ UI 경계를 넘는 소통이 필요하면 → SO 이벤트 채널 추가 (Data에)
+Game ↔ UI 소통이 필요하면 → Data에 SO 이벤트 채널 추가.
 
-### 2. 데이터 SO 정의 (필요 시)
+참조 규칙:
+- Data → 아무것도 참조 불가
+- Core → Data만 참조 가능
+- Game → Core, Data 참조 가능
+- UI → Core, Data 참조 가능
+- Game ↔ UI 직접 참조 절대 금지
 
-`Assets/_Project/Scripts/Data/` 에 설정값용 SO 클래스 생성:
+---
+
+## Step 2 — SO Settings 정의 (필요 시)
+
+숫자 값(속도, 체력, 범위 등)이 있으면 반드시 SO로 분리한다. 하드코딩 금지.
+
+### 2-1. SO 클래스 작성
+
+`Assets/_Project/Scripts/Data/` 에 생성:
 
 ```csharp
-// EnemySettings.cs
+// XxxSettings.cs
 namespace Platformer.Data
 {
-    [CreateAssetMenu(fileName = "EnemySettings", menuName = "Platformer/Settings/Enemy")]
-    public class EnemySettings : ScriptableObject
+    [CreateAssetMenu(fileName = "XxxSettings", menuName = "Platformer/Settings/Xxx")]
+    public class XxxSettings : ScriptableObject
     {
-        public float moveSpeed = 2f;
+        public float moveSpeed = 3f;
         public int maxHealth = 3;
-        public float patrolRange = 5f;
     }
 }
 ```
 
-그 다음 `Assets/_Project/Datas/` 에서 우클릭 → Create > Platformer/Settings/Enemy 로 인스턴스 생성.
+### 2-2. SO 인스턴스 생성
 
-### 3. 스크립트 생성
+#### MCP 모드
 
-어셈블리 규칙 준수:
-- 파일 위치 = namespace와 일치
-- 1파일 1클래스
-- 필요한 using만 추가
+script-execute로 인스턴스를 생성한다:
 
 ```csharp
-// Assets/_Project/Scripts/Game/Enemy/EnemyController.cs
+using UnityEngine;
+using UnityEditor;
+
+public class Script
+{
+    public static object Main()
+    {
+        var so = ScriptableObject.CreateInstance<Platformer.Data.XxxSettings>();
+        AssetDatabase.CreateAsset(so, "Assets/_Project/Datas/XxxSettings.asset");
+        AssetDatabase.SaveAssets();
+        return "XxxSettings.asset 생성 완료";
+    }
+}
+```
+
+#### 수동 모드
+
+사용자에게 안내:
+> Project 패널에서 Assets/_Project/Datas/ 폴더 우클릭 → Create → Platformer → Settings → Xxx 선택.
+
+---
+
+## Step 3 — 이벤트 채널 추가 (필요 시)
+
+Game ↔ UI 소통이 필요하면 Data에 SO 이벤트 인스턴스를 추가한다.
+
+### 3-1. GameEvent SO는 이미 있음
+
+`Assets/_Project/Scripts/Data/GameEvent.cs` — 새 이벤트 타입이 필요하면 여기에 제네릭 버전 추가.
+
+### 3-2. 이벤트 인스턴스 생성
+
+#### MCP 모드
+
+```csharp
+using UnityEngine;
+using UnityEditor;
+
+public class Script
+{
+    public static object Main()
+    {
+        var evt = ScriptableObject.CreateInstance<Platformer.Data.GameEvent>();
+        AssetDatabase.CreateAsset(evt, "Assets/_Project/Datas/Events/OnXxxHappened.asset");
+        AssetDatabase.SaveAssets();
+        return "이벤트 에셋 생성 완료";
+    }
+}
+```
+
+#### 수동 모드
+
+> Assets/_Project/Datas/Events/ 폴더 우클릭 → Create → Platformer → Events → Game Event 선택.
+> 이름을 OnXxxHappened 으로 변경.
+
+---
+
+## Step 4 — 스크립트 작성
+
+이 단계는 MCP 모드/수동 모드 동일하다. 파일을 직접 작성한다.
+
+규칙:
+- 파일 위치 = 어셈블리 폴더 (예: `Assets/_Project/Scripts/Game/`)
+- namespace = 어셈블리 이름 (예: `namespace Platformer.Game`)
+- 1파일 1클래스
+- SO Settings는 `[SerializeField]`로 주입, 생성자에서 하드코딩 금지
+- Input은 반드시 Unity Input System 사용 (레거시 Input.GetKey 금지)
+
+```csharp
+// Assets/_Project/Scripts/Game/XxxController.cs
+using UnityEngine;
+using Platformer.Data;
+
 namespace Platformer.Game
 {
-    public class EnemyController : MonoBehaviour, IDamageable
+    public class XxxController : MonoBehaviour
     {
-        [SerializeField] private EnemySettings _settings;
-
-        private Rigidbody2D _rb;
-        private int _currentHealth;
+        [SerializeField] private XxxSettings _settings;
 
         void Awake()
         {
-            _rb = GetComponent<Rigidbody2D>();
-            _currentHealth = _settings.maxHealth;
+            // 초기화
         }
-
-        public void TakeDamage(int amount)
-        {
-            _currentHealth -= amount;
-            if (_currentHealth <= 0) Die();
-        }
-
-        void Die() { /* 처리 */ }
     }
 }
 ```
 
-### 4. Prefab 생성
+---
 
-1. 씬에 임시 GameObject 배치 + 컴포넌트 추가 + Inspector에서 값 연결
-2. `Assets/_Project/Prefabs/` 로 드래그 → Prefab 생성
-3. 씬의 임시 GameObject 삭제 (Prefab에서 인스턴스로 배치)
+## Step 5 — 컴파일 확인
 
-### 5. 와이어링 (Inspector 연결)
+```bash
+unity-mcp-cli run-tool assets-refresh --input '{}'
+grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
+```
 
-- SerializeField 슬롯에 SO, Prefab, 컴포넌트 연결
-- 이벤트 채널 사용 시 SO 인스턴스를 양쪽(발행/구독)에 모두 연결
+에러가 있으면 수정 후 이 Step을 반복한다. 에러 0이 될 때까지 다음으로 넘어가지 않는다.
 
-### 6. 테스트 작성
+수동 모드에서도 이 명령은 실행 가능하다 (CLI만 있으면 됨).
+CLI도 없으면 사용자에게 안내:
+> Unity 에디터 하단 Console 창(Ctrl+Shift+C)에서 빨간 에러가 0개인지 확인해줘.
 
-새 기능에 대응하는 테스트 파일을 Tests/ 폴더에 생성:
+---
+
+## Step 6 — 프리팹 생성/수정
+
+MonoBehaviour를 만들었으면 프리팹이 필요하다.
+
+### MCP 모드
+
+기존 프리팹에 컴포넌트 추가:
+
+```bash
+# 1. 프리팹 열기
+unity-mcp-cli run-tool assets-prefab-open --input '{"path": "Assets/_Project/Prefabs/Xxx.prefab"}'
+
+# 2. 루트 오브젝트 찾기
+unity-mcp-cli run-tool gameobject-find --input '{"name": "Xxx"}'
+
+# 3. 컴포넌트 추가
+unity-mcp-cli run-tool gameobject-component-add --input '{"gameObjectPath": "/Xxx", "componentType": "Platformer.Game.XxxController"}'
+
+# 4. 프리팹 저장 & 닫기
+unity-mcp-cli run-tool assets-prefab-save --input '{}'
+unity-mcp-cli run-tool assets-prefab-close --input '{}'
+```
+
+새 프리팹 생성:
+
+```bash
+# 1. 프리팹 생성
+unity-mcp-cli run-tool assets-prefab-create --input '{"name": "Xxx", "savePath": "Assets/_Project/Prefabs/Xxx.prefab"}'
+
+# 2. 필요한 컴포넌트 추가 (Rigidbody2D, Collider 등)
+unity-mcp-cli run-tool gameobject-component-add --input '{"gameObjectPath": "/Xxx", "componentType": "UnityEngine.Rigidbody2D"}'
+unity-mcp-cli run-tool gameobject-component-add --input '{"gameObjectPath": "/Xxx", "componentType": "UnityEngine.BoxCollider2D"}'
+unity-mcp-cli run-tool gameobject-component-add --input '{"gameObjectPath": "/Xxx", "componentType": "Platformer.Game.XxxController"}'
+
+# 3. 컴포넌트 속성 수정 (예: Rigidbody2D를 Static으로)
+unity-mcp-cli run-tool gameobject-component-modify --input '{"gameObjectPath": "/Xxx", "componentType": "UnityEngine.Rigidbody2D", "properties": {"bodyType": 1}}'
+
+# 4. 저장
+unity-mcp-cli run-tool assets-prefab-save --input '{}'
+unity-mcp-cli run-tool assets-prefab-close --input '{}'
+```
+
+### 수동 모드
+
+사용자에게 안내:
+> 1. Hierarchy 창에서 우클릭 → Create Empty. 이름을 "Xxx"로 변경.
+> 2. Inspector 하단 Add Component 클릭 → "XxxController" 검색해서 추가.
+> 3. 필요하면 Rigidbody2D, BoxCollider2D도 같은 방법으로 추가.
+> 4. Hierarchy의 Xxx 오브젝트를 Project 패널의 Assets/_Project/Prefabs/ 폴더로 드래그.
+> 5. Hierarchy에서 Xxx 오브젝트 삭제 (프리팹에서 인스턴스를 꺼내 쓸 거라서).
+
+---
+
+## Step 7 — Inspector 와이어링 (SO 슬롯 연결)
+
+SerializeField 슬롯에 SO 인스턴스를 연결한다.
+
+### MCP 모드
+
+프리팹을 열고 컴포넌트의 SO 참조를 세팅한다:
 
 ```csharp
-// 예: Scripts/Game/Tests/EnemyControllerTests.cs
+using UnityEngine;
+using UnityEditor;
+
+public class Script
+{
+    public static object Main()
+    {
+        // 프리팹 로드
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Xxx.prefab");
+        var comp = prefab.GetComponent<Platformer.Game.XxxController>();
+
+        // SO 로드
+        var settings = AssetDatabase.LoadAssetAtPath<Platformer.Data.XxxSettings>("Assets/_Project/Datas/XxxSettings.asset");
+
+        // SerializedObject로 private 필드 연결
+        var so = new SerializedObject(comp);
+        so.FindProperty("_settings").objectReferenceValue = settings;
+        so.ApplyModifiedProperties();
+
+        EditorUtility.SetDirty(prefab);
+        AssetDatabase.SaveAssets();
+
+        return "와이어링 완료";
+    }
+}
+```
+
+이벤트 채널도 같은 방식으로 연결:
+```csharp
+so.FindProperty("_onXxxHappened").objectReferenceValue =
+    AssetDatabase.LoadAssetAtPath<Platformer.Data.GameEvent>("Assets/_Project/Datas/Events/OnXxxHappened.asset");
+```
+
+### 수동 모드
+
+> 1. Project 패널에서 Assets/_Project/Prefabs/Xxx.prefab 더블클릭 (프리팹 편집 모드 진입).
+> 2. Inspector에서 XxxController 컴포넌트의 "Settings" 슬롯 찾기.
+> 3. Project 패널에서 Assets/_Project/Datas/XxxSettings 에셋을 해당 슬롯으로 드래그.
+> 4. 이벤트 채널이 있으면 같은 방법으로 Assets/_Project/Datas/Events/ 에셋도 연결.
+> 5. 상단 < 버튼으로 프리팹 편집 모드 나가기. 저장 확인 팝업 나오면 Save.
+
+---
+
+## Step 8 — 테스트 작성
+
+새 기능에 대응하는 테스트를 작성한다. 이 단계는 MCP 모드/수동 모드 동일.
+
+파일 위치: 해당 어셈블리의 Tests/ 폴더
+- `Assets/_Project/Scripts/Data/Tests/`
+- `Assets/_Project/Scripts/Core/Tests/`
+- `Assets/_Project/Scripts/Game/Tests/`
+- `Assets/_Project/Scripts/UI/Tests/`
+
+```csharp
+// Assets/_Project/Scripts/Game/Tests/XxxControllerTests.cs
 using NUnit.Framework;
 using UnityEngine;
 
 namespace Platformer.Game.Tests
 {
-    public class EnemyControllerTests
+    public class XxxControllerTests
     {
         [Test]
-        public void TakeDamage_ReducesHealth()
+        public void FeatureName_Condition_ExpectedResult()
         {
             var go = new GameObject();
-            // ... 셋업 및 검증
+            // 셋업 및 검증
             Object.DestroyImmediate(go);
         }
     }
 }
 ```
 
-### 7. 검증
+테스트 실행:
 
 ```bash
-# 컴파일 확인
-unity-mcp-cli run-tool assets-refresh --input '{}'
-grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
-
-# 테스트 실행
 unity-mcp-cli run-tool tests-run --input '{}'
 ```
 
-- [ ] 컴파일 에러 없음
+CLI 없으면 사용자에게:
+> Unity 메뉴 Window → General → Test Runner 열어서 Run All 클릭해줘.
+
+전부 통과할 때까지 다음으로 넘어가지 않는다.
+
+---
+
+## Step 9 — 씬 배치 (필요 시)
+
+프리팹을 씬에 배치해야 하는 경우.
+
+### MCP 모드
+
+```bash
+# 프리팹 인스턴스를 씬에 배치
+unity-mcp-cli run-tool assets-prefab-instantiate --input '{"path": "Assets/_Project/Prefabs/Xxx.prefab"}'
+
+# 위치 조정이 필요하면
+unity-mcp-cli run-tool gameobject-modify --input '{"gameObjectPath": "/Xxx(Clone)", "properties": {"transform.position": {"x": 5, "y": 2, "z": 0}}}'
+
+# 씬 저장
+unity-mcp-cli run-tool scene-save --input '{}'
+```
+
+### 수동 모드
+
+> 1. Project 패널에서 Assets/_Project/Prefabs/Xxx.prefab을 씬(Scene 뷰 또는 Hierarchy)으로 드래그.
+> 2. Scene 뷰에서 위치 조정. 또는 Inspector의 Transform 에서 Position 직접 입력.
+> 3. Ctrl+S로 씬 저장.
+
+---
+
+## Step 10 — 최종 검증
+
+```bash
+# 컴파일
+unity-mcp-cli run-tool assets-refresh --input '{}'
+grep -n "error CS" ~/Library/Logs/Unity/Editor.log | tail -30
+
+# 테스트
+unity-mcp-cli run-tool tests-run --input '{}'
+
+# 런타임 에러
+grep -n "NullReferenceException\|MissingReferenceException" ~/Library/Logs/Unity/Editor.log | tail -20
+```
+
+체크리스트:
+- [ ] 컴파일 에러 0
 - [ ] 테스트 전부 통과
 - [ ] 어셈블리 경계 위반 없음 (using 확인)
-- [ ] 플레이 모드에서 동작 확인
-- [ ] null 참조 에러 없음 (Inspector 슬롯 다 채워졌는지)
+- [ ] SerializeField 슬롯 전부 연결됨 (null 참조 없음)
+- [ ] 플레이 모드에서 동작 확인 (MCP면 에디터 플레이 → 로그 확인, 수동이면 사용자에게 확인 요청)

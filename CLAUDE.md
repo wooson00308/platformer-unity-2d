@@ -73,6 +73,17 @@ void OnDisable() => onPlayerDied.RemoveListener(OnPlayerDied);
 - Scripts/Game/ → namespace Platformer.Game
 - Scripts/UI/ → namespace Platformer.UI
 
+### Unity 직렬화 파일 직접 수정 금지
+
+.unity(씬), .prefab, .asset, .controller, .anim 파일을 텍스트로 열어서 직접 읽거나 수정하지 말 것.
+이 파일들은 Unity YAML Serialization 포맷이라 fileID/GUID 참조가 얽혀 있어서, 직접 편집하면 참조가 깨진다.
+
+씬/프리팹/에셋 조작이 필요하면:
+- MCP 가용 시: script-execute 또는 MCP 도구(gameobject-*, assets-prefab-* 등) 사용
+- MCP 불가 시: 사용자에게 에디터 조작을 단계별로 안내
+
+유일한 예외: SO(.asset)의 단순 값 수정은 YAML sed + assets-refresh 허용 (ScriptableObject 수정 주의사항 참고).
+
 ### Arts/ 폴더 스크립트 금지
 Arts/ 하위에는 스프라이트, 애니메이션, 타일셋, VFX, 오디오 에셋만. .cs 파일 절대 넣지 말 것.
 

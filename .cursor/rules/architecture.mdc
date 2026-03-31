@@ -5,13 +5,18 @@ alwaysApply: true
 
 # 어셈블리 경계 규칙
 
-## Unity MCP 연결 필수
+## MCP 가용 여부 확인 (작업 시작 전 필수)
 
-코드 수정, 씬 조작, 테스트 실행 등 모든 작업 전에 Unity MCP 연결을 확인해야 한다.
+작업 시작 전 MCP 연결을 확인한다:
 ```bash
 unity-mcp-cli run-tool assets-refresh --input '{}'
 ```
-실패하면 setup-mcp 스킬을 실행해서 연결부터 잡을 것. 연결 없이 작업하면 검증이 안 된다.
+
+- SUCCESS → MCP 모드: script-execute, MCP 도구로 에디터 조작까지 AI가 직접 처리
+- 실패/타임아웃 → 수동 모드: 코드는 AI가 작성, 에디터 조작은 사용자에게 단계별 안내
+
+MCP가 안 되면 /setup-mcp 스킬로 연결 시도. 그래도 안 되면 수동 모드로 진행한다.
+수동 모드에서도 코드 작성, 테스트 작성, 파일 구조 잡기는 전부 AI가 한다. 에디터 조작만 사용자에게 넘긴다.
 
 ## 참조 방향 (절대 위반 금지)
 
@@ -56,6 +61,34 @@ void HandlePlayerDied() { /* UI 갱신 */ }
 
 SO 인스턴스는 Assets/_Project/Datas/Events/ 에 저장.
 인스턴스를 Inspector에서 연결해야 작동한다.
+
+## Unity 직렬화 파일 직접 접근 금지
+
+.unity(씬), .prefab, .asset, .controller, .anim 파일을 텍스트 에디터로 열어서 읽거나 수정하지 마라.
+이 파일들은 Unity YAML Serialization 포맷이라 fileID/GUID 참조가 얽혀 있어서, 직접 편집하면 참조가 깨진다.
+"맵이 어떻게 생겼는지 보겠다"는 이유로 .unity를 Read/cat으로 열면 안 된다.
+
+씬/하이라키/타일맵 정보가 필요하면:
+```bash
+# 하이라키 탐색 — script-execute로
+unity-mcp-cli run-tool script-execute --input-file - <<'SCRIPT'
+{"csharpCode": "using UnityEngine;\nusing System.Linq;\npublic class Script { public static object Main() {\n  var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();\n  return string.Join(\"\\n\", roots.Select(r => r.name));\n} }"}
+SCRIPT
+
+# 특정 오브젝트 컴포넌트 조회
+unity-mcp-cli run-tool gameobject-component-get --input '{"gameObjectPath": "/Grid/Tilemap_Ground", "componentType": "UnityEngine.Tilemaps.Tilemap"}'
+
+# 타일맵 타일 조회 — script-execute로
+unity-mcp-cli run-tool script-execute --input-file - <<'SCRIPT'
+{"csharpCode": "using UnityEngine;\nusing UnityEngine.Tilemaps;\npublic class Script { public static object Main() {\n  var tm = GameObject.Find(\"Tilemap_Ground\")?.GetComponent<Tilemap>();\n  if (tm == null) return \"Tilemap 없음\";\n  var bounds = tm.cellBounds;\n  int count = 0;\n  foreach (var pos in bounds.allPositionsWithin) if (tm.GetTile(pos) != null) count++;\n  return $\"범위: {bounds}, 타일 수: {count}\";\n} }"}
+SCRIPT
+```
+
+씬/프리팹/에셋 수정이 필요하면:
+- MCP 가용 시: script-execute 또는 MCP 도구(gameobject-*, assets-prefab-* 등) 사용
+- MCP 불가 시: 사용자에게 에디터 조작을 단계별로 안내
+
+유일한 예외: SO(.asset)의 단순 값 수정은 YAML sed + assets-refresh 허용.
 
 ## 금지 패턴
 
@@ -113,3 +146,11 @@ grep -n "NullReferenceException\|InvalidOperationException\|MissingReferenceExce
 
 script-execute는 씬 하이라키 탐색, 컴포넌트 일괄 조회 등 일괄 작업에만 사용.
 단일 오브젝트 조작은 개별 MCP 툴(assets-get 등) 사용.
+
+## 커밋 컨벤션
+
+```
+<type>: <설명>
+```
+
+타입: feat(새 기능), fix(버그 수정), art(에셋 추가/수정), docs(문서), chore(기타)
